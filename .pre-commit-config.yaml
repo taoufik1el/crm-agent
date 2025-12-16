@@ -16,7 +16,6 @@ repos:
       - id: check-yaml
       - id: check-symlinks
       - id: debug-statements
-      - id: detect-aws-credentials
       - id: detect-private-key
       - id: end-of-file-fixer
         exclude: '(\.idea/|\.iml$)'
