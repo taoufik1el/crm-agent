@@ -1,4 +1,42 @@
 # pyproject.toml
+[project]
+name = "ml-eng-technical-test"
+version = "0.1.0"
+description = "ML Engineer technical test"
+requires-python = ">=3.13"
+
+[project.optional-dependencies]
+
+# Agent / orchestration logic
+agent = [
+  "pydantic>=2.0.0",
+  "python-dotenv>=1.0.0",
+  "httpx>=0.27.0",
+  "langgraph>=0.2.0",
+  "langchain>=0.3.0",
+  "langchain-core>=0.3.0",
+  "langchain-openai>=0.2.0",
+  "langchain-google-genai>=2.0.0",
+  "langchain-mcp-adapters>=0.0.3",
+  "mcp>=1.0.0",
+  "fastapi>=0.115.0",
+  "uvicorn[standard]>=0.32.0",
+]
+
+# MCP server
+mcp_server = [
+  "python-dotenv>=1.0.0",
+  "mcp[cli]>=1.0.0",
+  "starlette>=0.41.0",
+  "uvicorn[standard]>=0.32.0",
+]
+
+# Frontend / UI
+webapp = [
+  "streamlit>=1.40.0",
+  "requests>=2.32.0",
+]
+
 
 [tool.ruff]
 target-version = "py313"
@@ -50,19 +88,16 @@ warn_return_any = true
 implicit_reexport = false
 strict_equality = true
 warn_unreachable = true
-files = ["agent", "mcp_server", "webapp"]
+files = ["src"]
 
 [tool.pytest.ini_options]
 minversion = "7.0"
 addopts = "--strict-markers --tb=short --cov=agent --cov=mcp_server --cov-report=xml"
-testpaths = [
-    "agent/tests",
-    "mcp_server/tests"
-]
+testpaths = ["tests"]
 
 [tool.coverage.run]
 branch = true
-source = ["agent", "mcp_server"]
+source = ["src/agent", "src/mcp_server"]
 
 [tool.coverage.report]
 show_missing = true
