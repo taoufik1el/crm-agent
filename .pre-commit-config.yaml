@@ -19,6 +19,7 @@ repos:
       - id: detect-aws-credentials
       - id: detect-private-key
       - id: end-of-file-fixer
+        exclude: '(\.idea/|\.iml$)'
       - id: mixed-line-ending
       - id: name-tests-test
         args: ["--pytest-test-first"]
