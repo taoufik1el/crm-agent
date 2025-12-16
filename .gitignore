@@ -16,8 +16,7 @@ venv/
 # Streamlit cache
 .streamlit/
 
-# MCP server data (if sensitive)
-mcp_server/data/
 
 # OS files
 .DS_Store
+/src/mcp_server/data/

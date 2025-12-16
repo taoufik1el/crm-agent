@@ -1,30 +1,27 @@
 # pylint: disable=line-too-long
-"""
-Final Answer Node
+"""Final Answer Node.
 
 This node receives the user query and retrieved context,
 then uses GPT-4o-mini to generate the final response.
 """
 
-from typing import Any, Dict
+import sys
+from typing import Any
 
+from langchain_core.language_models import BaseChatModel
 from langchain_core.prompts import ChatPromptTemplate
 
-import sys
-
 sys.path.append("..")
-from config import FINAL_ANSWER_MODEL, AgentState, LLM_PROVIDER
+from config import FINAL_ANSWER_MODEL, LLM_PROVIDER, AgentState
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_openai import ChatOpenAI
 
 
-def get_llm():
+def get_llm() -> BaseChatModel:
     """Get the LLM based on the configured provider."""
     if LLM_PROVIDER == "google":
-        from langchain_google_genai import ChatGoogleGenerativeAI
-
         return ChatGoogleGenerativeAI(model=FINAL_ANSWER_MODEL, temperature=0)
     else:
-        from langchain_openai import ChatOpenAI
-
         return ChatOpenAI(model=FINAL_ANSWER_MODEL, temperature=0)
 
 
@@ -44,9 +41,9 @@ If the information needed to answer the question is not available in the context
 """
 
 
-def final_answer_node(state: AgentState) -> Dict[str, Any]:
-    """
-    Final answer node - generates the response using GPT-4o-mini.
+# TODO: use pydantic model
+def final_answer_node(state: AgentState) -> dict[str, Any]:
+    """Final answer node - generates the response using GPT-4o-mini.
 
     This node:
     1. Receives the user query and retrieved context from state

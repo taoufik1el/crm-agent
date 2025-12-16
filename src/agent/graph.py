@@ -1,6 +1,5 @@
 # pylint: disable=line-too-long
-"""
-Agent Graph Definition
+"""Agent Graph Definition.
 
 This module defines the LangGraph workflow for the agent.
 The graph follows the structure:
@@ -14,15 +13,13 @@ The final_answer node:
 - Uses GPT-4o-mini to generate the response based on the context
 """
 
-from langgraph.graph import StateGraph, END, START
-
 from config import AgentState
-from nodes import supervisor_node, final_answer_node
+from langgraph.graph import END, START, StateGraph
+from nodes import final_answer_node, supervisor_node
 
 
 def create_agent_graph() -> StateGraph:
-    """
-    Create and compile the agent graph.
+    """Create and compile the agent graph.
 
     The graph structure is:
         __start__ → supervisor → final_answer → __end__
