@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.env
+venv/
+.env
+
+# VSCode
+.vscode/
+
+# Pytest
+.pytest_cache/
+
+# Streamlit cache
+.streamlit/
+
+# MCP server data (if sensitive)
+mcp_server/data/
+
+# OS files
+.DS_Store
