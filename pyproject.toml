@@ -1,0 +1,70 @@
+# pyproject.toml
+
+[tool.ruff]
+target-version = "py313"
+
+[tool.ruff.lint]
+ignore = [
+    "E501",
+    "S101",
+    "F403",
+    "D107",
+    "D100",
+    "D104",
+    "D105", # Missing docstring for module, __init__, package
+    "DOC201",
+    "DOC501",
+    "DOC402",
+]
+select = ["B", "D", "DOC", "E", "F", "I", "N", "PGH", "UP", "S", "T20", "TID", "W"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*.py" = ["D", "DOC", "S106"]
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "parents"
+
+[tool.ruff.lint.pep8-naming]
+classmethod-decorators = ["classmethod"]
+
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = ["fastapi.Depends"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.isort]
+split-on-trailing-comma = false
+
+[tool.ruff.format]
+skip-magic-trailing-comma = true
+
+[tool.mypy]
+python_version = 3.13
+disallow_any_generics = true
+disallow_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_return_any = true
+implicit_reexport = false
+strict_equality = true
+warn_unreachable = true
+files = ["agent", "mcp_server", "webapp"]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "--strict-markers --tb=short --cov=agent --cov=mcp_server --cov-report=xml"
+testpaths = [
+    "agent/tests",
+    "mcp_server/tests"
+]
+
+[tool.coverage.run]
+branch = true
+source = ["agent", "mcp_server"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+precision = 2

@@ -2,11 +2,12 @@
 # pylint: disable=line-too-long
 
 import os
-from typing import Annotated, List, Optional
+from typing import Annotated
+
+from langchain_core.messages import BaseMessage
+from langgraph.graph import MessagesState, add_messages
 from pydantic import BaseModel, Field
 from typing_extensions import TypedDict
-from langgraph.graph import MessagesState, add_messages
-from langchain_core.messages import BaseMessage
 
 # LLM settings
 # Set LLM_PROVIDER to "google" or "openai"
@@ -50,14 +51,14 @@ class Step(TypedDict):
 class Plan(BaseModel):
     """Plan to follow - pre-determined for this agent."""
 
-    steps: List[Step] = Field(description="Steps to execute in order")
+    steps: list[Step] = Field(description="Steps to execute in order")
 
 
 class RetrievedContext(BaseModel):
     """Context retrieved from MCP tools."""
 
-    transcripts: Optional[str] = None
-    emails: Optional[str] = None
+    transcripts: str | None = None
+    emails: str | None = None
 
 
 class AgentState(MessagesState):
@@ -77,7 +78,7 @@ class AgentState(MessagesState):
     final_response: str
 
     # Tracking
-    messages: Annotated[List[BaseMessage], add_messages]
+    messages: Annotated[list[BaseMessage], add_messages]
 
 
 # Pre-determined plan - always fetch all transcripts and emails for the account

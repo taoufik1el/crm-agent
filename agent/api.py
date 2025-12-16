@@ -1,19 +1,21 @@
-"""
-Agent API Server
+"""Agent API Server.
 
 FastAPI backend that exposes the agent via HTTP endpoints.
 Supports both streaming and non-streaming responses.
 """
 
-from typing import AsyncGenerator
+import json
+import os
+from collections.abc import AsyncGenerator
+from pathlib import Path
+from typing import Any
 
+import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
-import uvicorn
-
 from main import run_agent
+from pydantic import BaseModel
 
 app = FastAPI(title="Account Intelligence API", version="1.0.0")
 
@@ -40,16 +42,12 @@ class QueryResponse(BaseModel):
     response: str
 
 
-def load_accounts_from_data():
+def load_accounts_from_data() -> list[dict[str, str | int]]:
     """Load accounts from the MCP server data directory."""
-    import json
-    from pathlib import Path
-    import os
-
     data_dir = Path(
         os.getenv("DATA_DIR", Path(__file__).parent.parent / "mcp_server" / "data")
     )
-    accounts = []
+    accounts: list[dict[str, str | int]] = []
 
     if not data_dir.exists():
         return accounts
@@ -58,7 +56,7 @@ def load_accounts_from_data():
         try:
             # Extract account_id from filename (e.g., account_1.json -> 1)
             account_id = int(file_path.stem.replace("account_", ""))
-            with open(file_path, "r") as f:
+            with open(file_path) as f:
                 data = json.load(f)
                 accounts.append(
                     {
@@ -66,29 +64,28 @@ def load_accounts_from_data():
                         "name": data.get("account_name", f"Account {account_id}"),
                     }
                 )
-        except (json.JSONDecodeError, IOError, ValueError):
+        except (OSError, json.JSONDecodeError, ValueError):
             continue
 
     return accounts
 
 
 @app.get("/health")
-async def health_check():
+async def health_check() -> dict[str, str]:
     """Health check endpoint."""
     return {"status": "healthy"}
 
 
 @app.get("/api/accounts")
-async def get_accounts():
+async def get_accounts() -> dict[str, list[dict[str, str | int]]]:
     """Get list of available accounts for the dropdown."""
     accounts = load_accounts_from_data()
     return {"accounts": accounts}
 
 
 @app.post("/api/query", response_model=QueryResponse)
-async def query_agent(request: QueryRequest):
-    """
-    Query the agent with a user question about an account.
+async def query_agent(request: QueryRequest) -> QueryResponse:
+    """Query the agent with a user question about an account.
 
     Returns the agent's response (non-streaming).
     """
@@ -100,18 +97,17 @@ async def query_agent(request: QueryRequest):
         return QueryResponse(response=response)
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.post("/api/query/stream")
-async def query_agent_stream(request: QueryRequest):
-    """
-    Query the agent with streaming response.
+async def query_agent_stream(request: QueryRequest) -> StreamingResponse:
+    """Query the agent with streaming response.
 
     Returns a Server-Sent Events stream.
     """
 
-    async def generate() -> AsyncGenerator[str, None]:
+    async def generate() -> AsyncGenerator[str, Any]:
         try:
             # Run the agent to get the full response
             response = run_agent(
@@ -133,12 +129,9 @@ async def query_agent_stream(request: QueryRequest):
     return StreamingResponse(
         generate(),
         media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-        },
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
     )
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8001)
+    uvicorn.run(app, host="127.0.0.1", port=8001)

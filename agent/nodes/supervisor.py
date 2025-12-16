@@ -1,6 +1,5 @@
 # pylint: disable=line-too-long
-"""
-Supervisor Node
+"""Supervisor Node.
 
 This node is the first entrypoint of the agent. It:
 1. Uses the pre-determined plan to fetch all transcripts and emails
@@ -9,35 +8,33 @@ This node is the first entrypoint of the agent. It:
 """
 
 import asyncio
+import sys
+from collections.abc import Coroutine
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any, Dict
+from typing import Any
 
 from mcp import ClientSession
-from mcp.client.streamable_http import streamablehttp_client
-
-import sys
+from mcp.client.streamable_http import streamable_http_client
 
 sys.path.append("..")
 from config import FIXED_PLAN, MCP_SERVER_URL, AgentState, RetrievedContext
-
 
 # Thread pool for running async code from sync context
 _executor = ThreadPoolExecutor(max_workers=4)
 
 
-def _run_async(coro):
+def _run_async(coro: Coroutine[Any, Any, str]) -> str:
     """Run async coroutine from sync context, handling existing event loops."""
     try:
-        loop = asyncio.get_running_loop()
+        _ = asyncio.get_running_loop()
     except RuntimeError:
         # No running loop, safe to use asyncio.run()
         return asyncio.run(coro)
 
     # There's a running loop (e.g., FastAPI), run in a new thread
-    import concurrent.futures
 
     with ThreadPoolExecutor(max_workers=1) as executor:
-        future = executor.submit(asyncio.run, coro)
+        future = executor.submit(lambda: asyncio.run(coro))
         return future.result()
 
 
@@ -47,9 +44,9 @@ class MCPClient:
     def __init__(self, server_url: str):
         self.server_url = server_url
 
-    async def _call_tool(self, tool_name: str, arguments: Dict[str, Any]) -> str:
+    async def _call_tool(self, tool_name: str, arguments: dict[str, Any]) -> str:
         """Async method to call an MCP tool."""
-        async with streamablehttp_client(self.server_url) as (read, write, _):
+        async with streamable_http_client(self.server_url) as (read, write, _):
             async with ClientSession(read, write) as session:
                 await session.initialize()
                 result = await session.call_tool(tool_name, arguments)
@@ -61,7 +58,7 @@ class MCPClient:
                     )
                 return ""
 
-    def call_tool(self, tool_name: str, arguments: Dict[str, Any]) -> str:
+    def call_tool(self, tool_name: str, arguments: dict[str, Any]) -> str:
         """Sync wrapper to call an MCP tool."""
         try:
             return _run_async(self._call_tool(tool_name, arguments))
@@ -73,9 +70,9 @@ class MCPClient:
 mcp_client = MCPClient(MCP_SERVER_URL)
 
 
-def supervisor_node(state: AgentState) -> Dict[str, Any]:
-    """
-    Supervisor node - orchestrates the agent execution.
+# TODO: use pydantic model
+def supervisor_node(state: AgentState) -> dict[str, Any]:
+    """Supervisor node - orchestrates the agent execution.
 
     This node:
     1. Uses the fixed plan (fetch all transcripts and emails)

@@ -1,15 +1,18 @@
 # pylint: disable=line-too-long
-"""
-Agent Main Entry Point
+"""Agent Main Entry Point.
 
 This module provides the main interface to run the agent.
 """
 
-from typing import Optional
+import logging
+
+from config import RetrievedContext
+from graph import agent
 from pydantic import BaseModel
 
-from graph import agent
-from config import AgentState, RetrievedContext
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
+)
 
 
 class AgentInput(BaseModel):
@@ -26,8 +29,7 @@ class AgentOutput(BaseModel):
 
 
 def run_agent(user_query: str, account_id: int) -> str:
-    """
-    Run the agent with the given user query and account ID.
+    """Run the agent with the given user query and account ID.
 
     Args:
         user_query: The user's question
@@ -48,11 +50,11 @@ def run_agent(user_query: str, account_id: int) -> str:
 
     # Run the agent
     result = agent.invoke(initial_state)
+    # TODO: use pydantic model
+    return result["final_response"]  # type: ignore[no-any-return]
 
-    return result["final_response"]
 
-
-def main():
+def main() -> None:
     """Main function for testing the agent."""
     import argparse
 
@@ -64,14 +66,14 @@ def main():
 
     args = parser.parse_args()
 
-    print(f"Running agent with query: {args.query}")
-    print(f"Account ID: {args.account_id}")
-    print("-" * 50)
+    logging.info(f"Running agent with query: {args.query}")
+    logging.info(f"Account ID: {args.account_id}")
+    logging.info("-" * 50)
 
     response = run_agent(args.query, args.account_id)
 
-    print("Response:")
-    print(response)
+    logging.info("Response:")
+    logging.info(response)
 
 
 if __name__ == "__main__":

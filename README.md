@@ -143,7 +143,7 @@ Your API keys will be provided separately and deleted after the test.
 ## 📁 Project Structure
 
 ```
-ml-eng-hiring/
+ml-eng-technical-test/
 ├── README.md              # This file
 ├── agent/
 │   ├── api.py             # FastAPI server
@@ -192,4 +192,3 @@ ml-eng-hiring/
 - Ask questions if something is unclear
 
 Good luck! 🚀
-

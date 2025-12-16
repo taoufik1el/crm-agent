@@ -1,5 +1,4 @@
-"""
-MCP Server
+"""MCP Server.
 
 Provides tools for retrieving account data:
 - transcripts: Get call transcripts for an account
@@ -12,18 +11,20 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
-from mcp.server.fastmcp import FastMCP
-from starlette.responses import JSONResponse
-from starlette.requests import Request
 import uvicorn
+from mcp.server.fastmcp import FastMCP
+from starlette.applications import Starlette
 
 
 # Suppress noisy ClosedResourceError logs from MCP's stateless HTTP transport
 # These are expected in stateless mode and don't affect functionality
 class ClosedResourceFilter(logging.Filter):
-    def filter(self, record):
+    """Filter to suppress ClosedResourceError logs."""
+
+    def filter(self, record: Any) -> bool:
+        """Filter out specific log messages."""
         # Filter out "Error in message router" with ClosedResourceError
         msg = record.getMessage()
         if "Error in message router" in msg:
@@ -49,7 +50,7 @@ DATA_DIR = Path(os.getenv("DATA_DIR", Path(__file__).parent / "data"))
 # Initialize MCP server
 mcp = FastMCP(
     SERVICE_NAME,
-    host="0.0.0.0",
+    host="127.0.0.1",
     port=8002,
     streamable_http_path="/mcp",
     json_response=True,
@@ -57,7 +58,7 @@ mcp = FastMCP(
 )
 
 
-def load_account_data(account_id: int) -> dict | None:
+def load_account_data(account_id: int) -> dict[str, Any] | None:
     """Load account data from JSON file.
 
     Account files are named account_<id>.json (e.g., account_1.json).
@@ -69,22 +70,22 @@ def load_account_data(account_id: int) -> dict | None:
     file_path = DATA_DIR / f"account_{account_id}.json"
     if file_path.exists():
         try:
-            with open(file_path, "r") as f:
+            with open(file_path) as f:
                 data = json.load(f)
                 data["account_id"] = account_id  # Add account_id to the data
-                return data
-        except (json.JSONDecodeError, IOError):
+                return data  # type: ignore[no-any-return]
+        except (OSError, json.JSONDecodeError):
             return None
 
     return None
 
 
-def list_all_accounts() -> list[dict]:
+def list_all_accounts() -> list[dict[str, str | int]]:
     """List all available accounts from data files.
 
     Returns a list of {id, name} dicts for each account.
     """
-    accounts = []
+    accounts: list[dict[str, str | int]] = []
     if not DATA_DIR.exists():
         return accounts
 
@@ -92,7 +93,7 @@ def list_all_accounts() -> list[dict]:
         try:
             # Extract account_id from filename (e.g., account_1.json -> 1)
             account_id = int(file_path.stem.replace("account_", ""))
-            with open(file_path, "r") as f:
+            with open(file_path) as f:
                 data = json.load(f)
                 accounts.append(
                     {
@@ -100,7 +101,7 @@ def list_all_accounts() -> list[dict]:
                         "name": data.get("account_name", f"Account {account_id}"),
                     }
                 )
-        except (json.JSONDecodeError, IOError, ValueError):
+        except (OSError, json.JSONDecodeError, ValueError):
             continue
 
     return accounts
@@ -113,7 +114,7 @@ def list_all_accounts() -> list[dict]:
     name="transcripts",
     description="Retrieve all call transcripts for an account. Returns raw transcript data as JSON.",
 )
-async def get_transcripts(account_id: int) -> Dict[str, Any]:
+async def get_transcripts(account_id: int) -> dict[str, Any]:
     """Get call transcripts for an account."""
     account_data = load_account_data(account_id)
 
@@ -134,7 +135,7 @@ async def get_transcripts(account_id: int) -> Dict[str, Any]:
         }
 
     # Return raw transcripts without summaries
-    transcripts: List[Dict[str, Any]] = []
+    transcripts: list[dict[str, Any]] = []
     for call in calls:
         transcripts.append(
             {
@@ -155,7 +156,7 @@ async def get_transcripts(account_id: int) -> Dict[str, Any]:
     name="emails",
     description="Retrieve all emails for an account. Returns raw email data as JSON.",
 )
-async def get_emails(account_id: int) -> Dict[str, Any]:
+async def get_emails(account_id: int) -> dict[str, Any]:
     """Get emails for an account."""
     account_data = load_account_data(account_id)
 
@@ -176,7 +177,7 @@ async def get_emails(account_id: int) -> Dict[str, Any]:
         }
 
     # Return raw emails
-    raw_emails: List[Dict[str, Any]] = []
+    raw_emails: list[dict[str, Any]] = []
     for email in emails:
         raw_emails.append(
             {
@@ -196,7 +197,7 @@ async def get_emails(account_id: int) -> Dict[str, Any]:
 # ----- App -----
 
 
-def create_app():
+def create_app() -> Starlette:
     """Create the Starlette app with MCP routes."""
     return mcp.streamable_http_app()
 
@@ -205,9 +206,10 @@ app = create_app()
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     port = int(os.getenv("MCP_SERVER_PORT", 8002))
-    print(f"Starting MCP Server on port {port}")
-    print(f"Data directory: {DATA_DIR}")
-    print(f"MCP endpoint: http://localhost:{port}/mcp")
+    logging.info(f"Starting MCP Server on port {port}")
+    logging.info(f"Data directory: {DATA_DIR}")
+    logging.info(f"MCP endpoint: http://localhost:{port}/mcp")
 
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    uvicorn.run(app, host="127.0.0.1", port=port)

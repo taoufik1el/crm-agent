@@ -1,12 +1,13 @@
-"""
-Account Intelligence Agent - Streamlit Frontend
+"""Account Intelligence Agent - Streamlit Frontend.
 
 Web interface that connects to the Agent API backend.
 """
 
 import os
+from collections.abc import Generator
+from typing import Any
 
-import requests
+import requests  # type: ignore[import]
 import streamlit as st
 
 # API configuration - use env var or default
@@ -14,9 +15,7 @@ API_URL = os.getenv("API_URL", "http://localhost:8001")
 
 # Page config
 st.set_page_config(
-    page_title="Account Intelligence Agent",
-    page_icon="🤖",
-    layout="centered",
+    page_title="Account Intelligence Agent", page_icon="🤖", layout="centered"
 )
 
 # Custom CSS - Clean white theme
@@ -24,34 +23,34 @@ st.markdown(
     """
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
-    
+
     .stApp {
         background: #ffffff;
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     }
-    
+
     .main .block-container {
         padding-top: 3rem;
         padding-bottom: 3rem;
         max-width: 720px;
     }
-    
+
     h1 {
         color: #111827 !important;
         font-weight: 600;
         font-size: 2rem !important;
         letter-spacing: -0.02em;
     }
-    
+
     h2, h3 {
         color: #374151 !important;
         font-weight: 600;
     }
-    
+
     p, label, .stMarkdown {
         color: #4b5563;
     }
-    
+
     /* Input styling */
     .stSelectbox > div > div,
     .stTextArea textarea {
@@ -60,13 +59,13 @@ st.markdown(
         border-radius: 8px !important;
         color: #111827 !important;
     }
-    
+
     .stSelectbox > div > div:focus-within,
     .stTextArea textarea:focus {
         border-color: #3b82f6 !important;
         box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
     }
-    
+
     /* Button styling */
     .stButton > button[kind="primary"] {
         background: #3b82f6 !important;
@@ -76,13 +75,13 @@ st.markdown(
         padding: 0.6rem 1.5rem !important;
         transition: all 0.15s ease !important;
     }
-    
+
     .stButton > button[kind="primary"]:hover {
         background: #2563eb !important;
         transform: translateY(-1px);
         box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25) !important;
     }
-    
+
     /* Response box */
     .response-box {
         background: #f9fafb;
@@ -95,23 +94,23 @@ st.markdown(
         line-height: 1.7;
         font-size: 0.95rem;
     }
-    
+
     /* Divider */
     hr {
         border-color: #f3f4f6 !important;
         margin: 1.5rem 0 !important;
     }
-    
+
     /* Toggle */
     .stCheckbox label span {
         color: #6b7280 !important;
     }
-    
+
     /* Spinner */
     .stSpinner > div {
         border-top-color: #3b82f6 !important;
     }
-    
+
     /* Error/Warning messages */
     .stAlert {
         border-radius: 8px !important;
@@ -123,7 +122,7 @@ st.markdown(
 
 
 @st.cache_data(ttl=300)
-def fetch_accounts():
+def fetch_accounts() -> Any:
     """Fetch accounts from the API."""
     try:
         response = requests.get(f"{API_URL}/api/accounts", timeout=10)
@@ -134,7 +133,7 @@ def fetch_accounts():
         return []
 
 
-def query_agent(account_id: int, user_query: str) -> str:
+def query_agent(account_id: int, user_query: str) -> Any:
     """Query the agent via API (non-streaming)."""
     response = requests.post(
         f"{API_URL}/api/query",
@@ -145,7 +144,7 @@ def query_agent(account_id: int, user_query: str) -> str:
     return response.json()["response"]
 
 
-def query_agent_stream(account_id: int, user_query: str):
+def query_agent_stream(account_id: int, user_query: str) -> Generator[Any, Any, Any]:
     """Query the agent via API with streaming."""
     response = requests.post(
         f"{API_URL}/api/query/stream",
@@ -167,7 +166,8 @@ def query_agent_stream(account_id: int, user_query: str):
                 yield data
 
 
-def main():
+def main() -> None:
+    """Main Streamlit app function."""
     # Header
     st.title("🤖 Account Intelligence Agent")
     st.markdown(
