@@ -13,12 +13,29 @@ The final_answer node:
 - Uses GPT-4o-mini to generate the response based on the context
 """
 
-from config import AgentState
+from langchain_core.language_models import BaseChatModel
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_openai import ChatOpenAI
 from langgraph.graph import END, START, StateGraph
-from nodes import final_answer_node, supervisor_node
+
+from agent.config import FINAL_ANSWER_MODEL, LLM_PROVIDER, AgentState
+from agent.nodes import (
+    create_final_answer_node,
+    create_item_selector_node,
+    create_mcp_node,
+    create_question_router_node,
+)
 
 
-def create_agent_graph() -> StateGraph:
+def get_llm() -> BaseChatModel:
+    """Get the LLM based on the configured provider."""
+    if LLM_PROVIDER == "google":
+        return ChatGoogleGenerativeAI(model=FINAL_ANSWER_MODEL, temperature=0)
+    else:
+        return ChatOpenAI(model=FINAL_ANSWER_MODEL, temperature=0)
+
+
+def create_agent_graph(llm: BaseChatModel) -> StateGraph:
     """Create and compile the agent graph.
 
     The graph structure is:
@@ -30,25 +47,30 @@ def create_agent_graph() -> StateGraph:
     # Initialize the graph with our state
     workflow = StateGraph(AgentState)
 
-    # Add nodes
-    workflow.add_node("supervisor", supervisor_node)
-    workflow.add_node("final_answer", final_answer_node)
+    # # Add nodes
+    workflow.add_node(node="question_router", action=create_question_router_node(llm))
+    workflow.add_node(node="mcp", action=create_mcp_node())
+    workflow.add_node(node="item_selector", action=create_item_selector_node(llm))
+    workflow.add_node(node="final_answer", action=create_final_answer_node(llm))
 
-    # Define the edges
-    # START → supervisor
-    workflow.add_edge(START, "supervisor")
-
-    # supervisor → final_answer
-    workflow.add_edge("supervisor", "final_answer")
-
-    # final_answer → END
-    workflow.add_edge("final_answer", END)
-
+    # # Define the edges
+    workflow.add_edge(start_key=START, end_key="question_router")
+    workflow.add_edge(start_key="question_router", end_key="mcp")
+    # workflow.add_edge(start_key="mcp", end_key="item_selector")
+    workflow.add_conditional_edges(
+        "mcp",
+        lambda state: state.get("end"),
+        path_map={True: END, False: "item_selector"},
+    )
+    workflow.add_edge(start_key="item_selector", end_key="final_answer")
+    workflow.add_edge(start_key="final_answer", end_key=END)
     # Compile the graph
     graph = workflow.compile()
 
     return graph
 
 
+# Initialize LLM
+llm = get_llm()
 # Create the agent instance
-agent = create_agent_graph()
+agent = create_agent_graph(llm)

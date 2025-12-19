@@ -2,22 +2,21 @@
 """Supervisor Node.
 
 This node is the first entrypoint of the agent. It:
-1. Uses the pre-determined plan to fetch all transcripts and emails
+1. Uses the pre-determined plan to fetch all calls and emails
 2. Calls the MCP tools directly to retrieve the context
 3. Passes control to the final_answer node
 """
 
 import asyncio
-import sys
-from collections.abc import Coroutine
+import json
+from collections.abc import Callable, Coroutine
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 from mcp import ClientSession
 from mcp.client.streamable_http import streamable_http_client
 
-sys.path.append("..")
-from config import FIXED_PLAN, MCP_SERVER_URL, AgentState, RetrievedContext
+from agent.config import MCP_SERVER_URL, AccountInfo, AgentState, DataSource
 
 # Thread pool for running async code from sync context
 _executor = ThreadPoolExecutor(max_workers=4)
@@ -70,32 +69,36 @@ class MCPClient:
 mcp_client = MCPClient(MCP_SERVER_URL)
 
 
-# TODO: use pydantic model
-def supervisor_node(state: AgentState) -> dict[str, Any]:
-    """Supervisor node - orchestrates the agent execution.
+def create_mcp_node() -> Callable[[AgentState], dict[str, Any]]:
+    """Create the MCP node function."""
 
-    This node:
-    1. Uses the fixed plan (fetch all transcripts and emails)
-    2. Calls the MCP tools to retrieve data
-    3. Stores the retrieved context in state
-    """
-    account_id = state["account_id"]
-    plan = FIXED_PLAN
+    def mcp_node(state: AgentState) -> dict[str, Any]:
+        """Supervisor node - orchestrates the agent execution.
 
-    # Execute the plan: call MCP tools
-    transcripts_data = None
-    emails_data = None
+        This node:
+        1. Uses the fixed plan (fetch all calls and emails)
+        2. Calls the MCP tools to retrieve data
+        3. Stores the retrieved context in state
+        """
+        account_id = state["account_id"]
+        # Execute the plan: call MCP tools
+        if state["data_source"] in [DataSource.calls]:
+            mcp_data = json.loads(
+                mcp_client.call_tool("calls", {"account_id": account_id})
+            )
+        elif state["data_source"] in [DataSource.emails]:
+            mcp_data = json.loads(
+                mcp_client.call_tool("emails", {"account_id": account_id})
+            )
+        else:  # both
+            mcp_data = json.loads(
+                mcp_client.call_tool("calls_emails", {"account_id": account_id})
+            )
 
-    for step in plan.steps:
-        tool_name = step["tool"]
-        result = mcp_client.call_tool(tool_name, {"account_id": account_id})
+        account_info = AccountInfo.model_validate(mcp_data)
+        found = mcp_data.get("found", False)
+        if not found:
+            return {"final_response": mcp_data["error"], "end": True}
+        return {"account_info": account_info, "end": False}
 
-        if tool_name == "transcripts":
-            transcripts_data = result
-        elif tool_name == "emails":
-            emails_data = result
-
-    return {
-        "plan": plan,
-        "context": RetrievedContext(transcripts=transcripts_data, emails=emails_data),
-    }
+    return mcp_node

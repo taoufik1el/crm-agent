@@ -1,8 +1,9 @@
 """MCP Server.
 
 Provides tools for retrieving account data:
-- transcripts: Get call transcripts for an account
+- calls: Get calls for an account
 - emails: Get emails for an account
+- calls_emails: Get both calls and emails for an account
 
 Uses FastMCP with streamable_http transport.
 """
@@ -45,7 +46,7 @@ logging.getLogger("mcp.server.streamable_http").addFilter(ClosedResourceFilter()
 SERVICE_NAME = "account-data-mcp"
 
 # Data directory
-DATA_DIR = Path(os.getenv("DATA_DIR", Path(__file__).parent / "data"))
+DATA_DIR = Path(os.getenv("DATA_DIR", Path(__file__).parent / "data")) / "accounts"
 
 # Initialize MCP server
 mcp = FastMCP(
@@ -111,17 +112,17 @@ def list_all_accounts() -> list[dict[str, str | int]]:
 
 
 @mcp.tool(
-    name="transcripts",
-    description="Retrieve all call transcripts for an account. Returns raw transcript data as JSON.",
+    name="calls",
+    description="Retrieve all calls for an account. Returns raw transcript data as JSON.",
 )
-async def get_transcripts(account_id: int) -> dict[str, Any]:
-    """Get call transcripts for an account."""
+async def get_calls(account_id: int) -> dict[str, Any]:
+    """Get calls for an account."""
     account_data = load_account_data(account_id)
 
     if account_data is None:
         return {
             "found": False,
-            "transcripts": None,
+            "calls": None,
             "error": f"No data found for account_id: {account_id}",
         }
 
@@ -130,25 +131,17 @@ async def get_transcripts(account_id: int) -> dict[str, Any]:
     if not calls:
         return {
             "found": False,
-            "transcripts": None,
-            "error": "No transcripts found for this account",
+            "calls": None,
+            "error": "No calls found for this account",
         }
-
-    # Return raw transcripts without summaries
-    transcripts: list[dict[str, Any]] = []
-    for call in calls:
-        transcripts.append(
-            {
-                "date": call.get("date"),
-                "call_name": call.get("call_name"),
-                "transcript": call.get("transcript"),
-            }
-        )
 
     return {
         "found": True,
         "account_name": account_data.get("account_name"),
-        "transcripts": transcripts,
+        "tenant_name": account_data.get("tenant_name"),
+        "account_id": account_id,
+        "calls": calls,
+        "emails": [],
     }
 
 
@@ -176,21 +169,47 @@ async def get_emails(account_id: int) -> dict[str, Any]:
             "error": "No emails found for this account",
         }
 
-    # Return raw emails
-    raw_emails: list[dict[str, Any]] = []
-    for email in emails:
-        raw_emails.append(
-            {
-                "date": email.get("date"),
-                "subject": email.get("subject"),
-                "content": email.get("content"),
-            }
-        )
+    return {
+        "found": True,
+        "tenant_name": account_data.get("tenant_name"),
+        "account_name": account_data.get("account_name"),
+        "calls": [],
+        "emails": emails,
+        "account_id": account_id,
+    }
 
+
+@mcp.tool(
+    name="calls_emails",
+    description="Retrieve both calls and emails for an account. Returns raw data as JSON.",
+)
+async def get_calls_and_emails(account_id: int) -> dict[str, Any]:
+    """Get both call and emails for an account."""
+    account_data = load_account_data(account_id)
+
+    if account_data is None:
+        return {
+            "found": False,
+            "calls": None,
+            "emails": None,
+            "error": f"No data found for account_id: {account_id}",
+        }
+    calls = account_data.get("calls", [])
+    emails = account_data.get("emails", [])
+    if not calls and not emails:
+        return {
+            "found": False,
+            "calls": None,
+            "emails": None,
+            "error": "No calls or emails found for this account",
+        }
     return {
         "found": True,
         "account_name": account_data.get("account_name"),
-        "emails": raw_emails,
+        "tenant_name": account_data.get("tenant_name"),
+        "calls": calls,
+        "emails": emails,
+        "account_id": account_id,
     }
 
 

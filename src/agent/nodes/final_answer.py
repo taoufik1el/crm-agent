@@ -5,25 +5,13 @@ This node receives the user query and retrieved context,
 then uses GPT-4o-mini to generate the final response.
 """
 
-import sys
+from collections.abc import Callable
 from typing import Any
 
 from langchain_core.language_models import BaseChatModel
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.messages import HumanMessage, SystemMessage
 
-sys.path.append("..")
-from config import FINAL_ANSWER_MODEL, LLM_PROVIDER, AgentState
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_openai import ChatOpenAI
-
-
-def get_llm() -> BaseChatModel:
-    """Get the LLM based on the configured provider."""
-    if LLM_PROVIDER == "google":
-        return ChatGoogleGenerativeAI(model=FINAL_ANSWER_MODEL, temperature=0)
-    else:
-        return ChatOpenAI(model=FINAL_ANSWER_MODEL, temperature=0)
-
+from agent.config import AgentState
 
 # System prompt for the final answer LLM
 FINAL_ANSWER_SYSTEM_PROMPT = """You are a helpful assistant that answers questions about accounts based on their interaction history.
@@ -41,44 +29,33 @@ If the information needed to answer the question is not available in the context
 """
 
 
-# TODO: use pydantic model
-def final_answer_node(state: AgentState) -> dict[str, Any]:
-    """Final answer node - generates the response using GPT-4o-mini.
+def create_final_answer_node(
+    llm: BaseChatModel,
+) -> Callable[[AgentState], dict[str, Any]]:
+    """Create the final answer node function."""
 
-    This node:
-    1. Receives the user query and retrieved context from state
-    2. Constructs a prompt with the context
-    3. Calls GPT-4o-mini to generate the final answer
+    def final_answer_node(state: AgentState) -> dict[str, Any]:
+        """Final answer node - generates the response using GPT-4o-mini.
 
-    Args:
-        state: The current agent state with context
+        This node:
+        1. Receives the user query and retrieved context from state
+        2. Constructs a prompt with the context
+        3. Calls GPT-4o-mini to generate the final answer
 
-    Returns:
-        Updated state with the final response
-    """
-    user_query = state["user_query"]
-    context = state["context"]
+        Args:
+            state: The current agent state with context
 
-    # Prepare the context strings
-    transcripts_str = (
-        context.transcripts if context.transcripts else "No transcripts available."
-    )
-    emails_str = context.emails if context.emails else "No emails available."
+        Returns:
+            Updated state with the final response
+        """
+        user_query = state["user_query"]
+        selected_ids = state["selected_item_indices"]
+        context = state["account_info"].context(selected_ids)
+        messages = [
+            SystemMessage(content=FINAL_ANSWER_SYSTEM_PROMPT),
+            HumanMessage(content=(f"Query: {user_query}\nData:\n{context}")),
+        ]
+        response = llm.invoke(messages)
+        return {"final_response": response.content}
 
-    # Create the prompt
-    prompt = ChatPromptTemplate.from_messages(
-        [("system", FINAL_ANSWER_SYSTEM_PROMPT), ("human", "{user_query}")]
-    )
-
-    # Initialize the LLM
-    llm = get_llm()
-
-    # Create the chain
-    chain = prompt | llm
-
-    # Generate the response
-    response = chain.invoke(
-        {"transcripts": transcripts_str, "emails": emails_str, "user_query": user_query}
-    )
-
-    return {"final_response": response.content}
+    return final_answer_node
