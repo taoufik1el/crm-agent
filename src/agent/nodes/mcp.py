@@ -16,7 +16,7 @@ from typing import Any
 from mcp import ClientSession
 from mcp.client.streamable_http import streamable_http_client
 
-from agent.config import MCP_SERVER_URL, AccountInfo, AgentState, DataSource
+from agent.config import MCP_SERVER_URL, AgentState, Call, Email
 
 # Thread pool for running async code from sync context
 _executor = ThreadPoolExecutor(max_workers=4)
@@ -81,24 +81,17 @@ def create_mcp_node() -> Callable[[AgentState], dict[str, Any]]:
         3. Stores the retrieved context in state
         """
         account_id = state["account_id"]
-        # Execute the plan: call MCP tools
-        if state["data_source"] in [DataSource.calls]:
-            mcp_data = json.loads(
-                mcp_client.call_tool("calls", {"account_id": account_id})
-            )
-        elif state["data_source"] in [DataSource.emails]:
-            mcp_data = json.loads(
-                mcp_client.call_tool("emails", {"account_id": account_id})
-            )
-        else:  # both
-            mcp_data = json.loads(
-                mcp_client.call_tool("calls_emails", {"account_id": account_id})
-            )
+        mcp_data = json.loads(
+            mcp_client.call_tool("calls_emails", {"account_id": account_id})
+        )
+        calls = [Call.model_validate(v) for v in mcp_data.get("calls", [])]
+        emails = [Email.model_validate(v) for v in mcp_data.get("emails", [])]
 
-        account_info = AccountInfo.model_validate(mcp_data)
-        found = mcp_data.get("found", False)
-        if not found:
-            return {"final_response": mcp_data["error"], "end": True}
-        return {"account_info": account_info, "end": False}
+        if not calls and not emails:
+            return {
+                "final_response": "data not found for the given account id.",
+                "end": True,
+            }
+        return {"calls": calls, "emails": emails, "end": False}
 
     return mcp_node

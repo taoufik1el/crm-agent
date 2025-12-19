@@ -49,11 +49,10 @@ def create_final_answer_node(
             Updated state with the final response
         """
         user_query = state["user_query"]
-        selected_ids = state["selected_item_indices"]
-        context = state["account_info"].context(selected_ids)
+        context = state["context"]
         messages = [
             SystemMessage(content=FINAL_ANSWER_SYSTEM_PROMPT),
-            HumanMessage(content=(f"Query: {user_query}\nData:\n{context}")),
+            HumanMessage(content=(f"Query: {user_query}\nContext:\n{context}")),
         ]
         response = llm.invoke(messages)
         return {"final_response": response.content}

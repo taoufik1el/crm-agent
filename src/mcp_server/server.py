@@ -140,7 +140,14 @@ async def get_calls(account_id: int) -> dict[str, Any]:
         "account_name": account_data.get("account_name"),
         "tenant_name": account_data.get("tenant_name"),
         "account_id": account_id,
-        "calls": calls,
+        "calls": [
+            {
+                "date": call.get("date"),
+                "content": call.get("transcript"),
+                "topics": call.get("topics"),
+            }
+            for call in calls
+        ],
         "emails": [],
     }
 
@@ -174,7 +181,14 @@ async def get_emails(account_id: int) -> dict[str, Any]:
         "tenant_name": account_data.get("tenant_name"),
         "account_name": account_data.get("account_name"),
         "calls": [],
-        "emails": emails,
+        "emails": [
+            {
+                "date": email.get("date"),
+                "content": email.get("content"),
+                "topics": email.get("topics"),
+            }
+            for email in emails
+        ],
         "account_id": account_id,
     }
 
@@ -207,8 +221,22 @@ async def get_calls_and_emails(account_id: int) -> dict[str, Any]:
         "found": True,
         "account_name": account_data.get("account_name"),
         "tenant_name": account_data.get("tenant_name"),
-        "calls": calls,
-        "emails": emails,
+        "calls": [
+            {
+                "date": call.get("date"),
+                "content": call.get("transcript"),
+                "topics": call.get("topics"),
+            }
+            for call in calls
+        ],
+        "emails": [
+            {
+                "date": email.get("date"),
+                "content": email.get("content"),
+                "topics": email.get("topics"),
+            }
+            for email in emails
+        ],
         "account_id": account_id,
     }
 
