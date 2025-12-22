@@ -21,8 +21,7 @@ webapp/
 ## Setup
 
 ```bash
-cd webapp
-pip install -r requirements.txt
+uv pip install -e ".[webapp]"
 ```
 
 ## Environment Variables
@@ -36,8 +35,7 @@ export API_URL="http://localhost:8001"  # optional, this is default
 **Important**: Make sure the Agent API is running first!
 
 ```bash
-cd webapp
-streamlit run app.py
+streamlit run src/webapp/app.py
 ```
 
 Opens at http://localhost:8501

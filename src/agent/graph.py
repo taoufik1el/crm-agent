@@ -73,3 +73,7 @@ def create_agent_graph() -> StateGraph:
 
 # Create the agent instance
 agent = create_agent_graph()
+
+png_bytes = agent.get_graph().draw_png()
+with open("agent_graph.png", "wb") as f:
+    f.write(png_bytes)
