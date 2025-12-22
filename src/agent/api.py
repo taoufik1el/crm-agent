@@ -7,16 +7,19 @@ Supports both streaming and non-streaming responses.
 import json
 import os
 from collections.abc import AsyncGenerator
-from pathlib import Path
 from typing import Any
 
 import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
-from main import run_agent
 from pydantic import BaseModel
 
+from agent.main import run_agent
+from agent.nodes.mcp import mcp_client
+
+host = os.getenv("APP_HOST", "127.0.0.1")
+port = int(os.getenv("APP_PORT", 8001))
 app = FastAPI(title="Account Intelligence API", version="1.0.0")
 
 # CORS middleware
@@ -42,34 +45,6 @@ class QueryResponse(BaseModel):
     response: str
 
 
-def load_accounts_from_data() -> list[dict[str, str | int]]:
-    """Load accounts from the MCP server data directory."""
-    data_dir = Path(
-        os.getenv("DATA_DIR", Path(__file__).parent.parent / "mcp_server" / "data")
-    )
-    accounts: list[dict[str, str | int]] = []
-
-    if not data_dir.exists():
-        return accounts
-
-    for file_path in sorted(data_dir.glob("account_*.json")):
-        try:
-            # Extract account_id from filename (e.g., account_1.json -> 1)
-            account_id = int(file_path.stem.replace("account_", ""))
-            with open(file_path) as f:
-                data = json.load(f)
-                accounts.append(
-                    {
-                        "id": account_id,
-                        "name": data.get("account_name", f"Account {account_id}"),
-                    }
-                )
-        except (OSError, json.JSONDecodeError, ValueError):
-            continue
-
-    return accounts
-
-
 @app.get("/health")
 async def health_check() -> dict[str, str]:
     """Health check endpoint."""
@@ -79,8 +54,8 @@ async def health_check() -> dict[str, str]:
 @app.get("/api/accounts")
 async def get_accounts() -> dict[str, list[dict[str, str | int]]]:
     """Get list of available accounts for the dropdown."""
-    accounts = load_accounts_from_data()
-    return {"accounts": accounts}
+    accounts = mcp_client.call_tool("fetch_accounts", arguments={})
+    return {"accounts": json.loads(accounts)}
 
 
 @app.post("/api/query", response_model=QueryResponse)
@@ -90,7 +65,7 @@ async def query_agent(request: QueryRequest) -> QueryResponse:
     Returns the agent's response (non-streaming).
     """
     try:
-        response = run_agent(
+        response, _ = run_agent(
             user_query=request.user_query, account_id=request.account_id
         )
 
@@ -110,7 +85,7 @@ async def query_agent_stream(request: QueryRequest) -> StreamingResponse:
     async def generate() -> AsyncGenerator[str, Any]:
         try:
             # Run the agent to get the full response
-            response = run_agent(
+            response, _ = run_agent(
                 user_query=request.user_query, account_id=request.account_id
             )
 
@@ -134,4 +109,4 @@ async def query_agent_stream(request: QueryRequest) -> StreamingResponse:
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="127.0.0.1", port=8001)
+    uvicorn.run(app, host=host, port=port)

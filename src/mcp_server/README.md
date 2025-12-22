@@ -4,10 +4,10 @@ Model Context Protocol server that provides data retrieval tools.
 
 ## Tools
 
-| Tool | Description | Input | Output |
-|------|-------------|-------|--------|
-| `transcripts` | Get call transcripts | `account_id: int` | Raw transcript JSON |
-| `emails` | Get emails | `account_id: int` | Raw email JSON |
+| Tool | Description                        | Input | Output                   |
+|------|------------------------------------|--|--------------------------|
+| `fetch_accounts` | Get all account ids                |  | List of account ids JSON |
+| `calls_emails` | Get calls and emails of an account | `account_id: int` | Raw email JSON           |
 
 ## Architecture
 
@@ -30,12 +30,14 @@ mcp_server/
 ├── requirements.txt
 ├── README.md
 └── data/               # Account JSON files go here
-    └── *.json
+    └── accounts/
+        └── *.json
+    └── topics.json      # topics of the calls/emails
 ```
 
 ## Data Format
 
-Place account JSON files in the `data/` directory:
+Place account JSON files in the `data/accounts` directory:
 
 ```json
 {
@@ -62,23 +64,13 @@ Place account JSON files in the `data/` directory:
 
 ## Tool Responses
 
-### `transcripts`
+### `fetch_accounts`
 
 ```json
-{
-  "found": true,
-  "account_name": "Acme Corp",
-  "transcripts": [
-    {
-      "date": "2024-01-15",
-      "call_name": "Discovery Call",
-      "transcript": "..."
-    }
-  ]
-}
+["account_1", "account_2"]
 ```
 
-### `emails`
+### `calls_emails`
 
 ```json
 {
@@ -90,15 +82,22 @@ Place account JSON files in the `data/` directory:
       "subject": "Follow-up",
       "content": "..."
     }
-  ]
+  ],
+    "calls": [
+        {
+        "date": "2024-01-15",
+        "call_name": "Discovery Call",
+        "transcript": "Sales Rep: Hi John...",
+        "summary": "..."
+        }
+    ]
 }
 ```
 
 ## Setup
 
 ```bash
-cd mcp_server
-pip install -r requirements.txt
+uv pip install -e ".[mcp_server]"
 ```
 
 ## Environment Variables
@@ -111,8 +110,7 @@ export MCP_SERVER_PORT=8002          # optional, defaults to 8002
 ## Running
 
 ```bash
-cd mcp_server
-python server.py
+python src/mcp_server/server.py
 ```
 
 Server available at http://localhost:8002

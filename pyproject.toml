@@ -40,6 +40,7 @@ webapp = [
 
 [tool.ruff]
 target-version = "py313"
+exclude = ["src/scripts"]
 
 [tool.ruff.lint]
 ignore = [

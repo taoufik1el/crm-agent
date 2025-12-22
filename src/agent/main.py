@@ -5,10 +5,11 @@ This module provides the main interface to run the agent.
 """
 
 import logging
+from typing import Any
 
-from config import RetrievedContext
-from graph import agent
 from pydantic import BaseModel
+
+from agent.graph import agent
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
@@ -28,12 +29,15 @@ class AgentOutput(BaseModel):
     response: str
 
 
-def run_agent(user_query: str, account_id: int) -> str:
+def run_agent(
+    user_query: str, account_id: int, baseline: bool = False
+) -> tuple[str, dict[str, Any]]:
     """Run the agent with the given user query and account ID.
 
     Args:
         user_query: The user's question
         account_id: The account ID to query data for
+        baseline: Whether to run in baseline mode
 
     Returns:
         The agent's response as a string
@@ -42,16 +46,20 @@ def run_agent(user_query: str, account_id: int) -> str:
     initial_state = {
         "user_query": user_query,
         "account_id": account_id,
-        "messages": [],
-        "plan": None,
-        "context": RetrievedContext(),
+        "baseline": baseline,
+        "calls": [],
+        "emails": [],
+        "plans": [],
+        "context": "",
+        "end": False,
         "final_response": "",
+        "messages": [],
+        "llm_usage": {},
     }
 
     # Run the agent
     result = agent.invoke(initial_state)
-    # TODO: use pydantic model
-    return result["final_response"]  # type: ignore[no-any-return]
+    return result["final_response"], result["llm_usage"]
 
 
 def main() -> None:
@@ -70,7 +78,7 @@ def main() -> None:
     logging.info(f"Account ID: {args.account_id}")
     logging.info("-" * 50)
 
-    response = run_agent(args.query, args.account_id)
+    response, _ = run_agent(args.query, args.account_id)
 
     logging.info("Response:")
     logging.info(response)

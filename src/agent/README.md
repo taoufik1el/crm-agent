@@ -4,54 +4,32 @@ FastAPI backend that exposes the LangGraph agent.
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                      Agent API                          │
-│                    (FastAPI :8001)                      │
-├─────────────────────────────────────────────────────────┤
-│                                                         │
-│   ┌─────────┐      ┌────────────┐      ┌─────────────┐ │
-│   │  START  │ ──►  │ Supervisor │ ──►  │Final Answer │ │
-│   └─────────┘      └────────────┘      └─────────────┘ │
-│                          │                    │        │
-│                          ▼                    ▼        │
-│                    ┌──────────┐         ┌─────────┐   │
-│                    │MCP Server│         │GPT-4o-  │   │
-│                    │  Tools   │         │  mini   │   │
-│                    └──────────┘         └─────────┘   │
-│                                                         │
-└─────────────────────────────────────────────────────────┘
-```
 
-## Graph Flow
-
-```
-__start__ → supervisor → final_answer → __end__
-```
+![Graph](agent_graph.png)
 
 ### Nodes
 
-1. **Supervisor** (`nodes/supervisor.py`)
-   - Deterministic Python (no LLM)
-   - Uses a **fixed plan**: always fetch all transcripts + emails
-   - Calls MCP tools via `streamable_http` client
-   - Passes context to final_answer
+1. **mcp** (`nodes/mcp.py`)
+   - deterministic node
+   - Interacts with MCP server to fetch transcripts and emails
+   - Tools:
+     - `transcripts`: Fetches all transcripts for a given account
+     - `emails`: Fetches all emails for a given account
 
-2. **Final Answer** (`nodes/final_answer.py`)
-   - Uses GPT-4o-mini
-   - Receives user query + retrieved context
-   - Generates the final response
+2. **planner** (`nodes/planner.py`)
+   - LLM-powered node
+   - Creates a plan to filter irrelevant calls/emails based on user query
 
-### Fixed Plan
 
-```json
-{
-  "steps": [
-    {"tool": "transcripts", "description": "Retrieve all transcripts for the account"},
-    {"tool": "emails", "description": "Retrieve all emails for the account"}
-  ]
-}
-```
+3. **plan_executor** (`nodes/plan_executor.py`)
+   - deterministic node
+   - Executes the plan created by the planner node by calling the appropriate tools
+   - Aggregates results from multiple tool calls
+   - Builds context for final answer generation
+
+4. **final_answer** (`nodes/final_answer.py`)
+   - LLM-powered node
+   - Generates the final answer based on the user query and aggregated context from plan_executor
 
 ## Files
 
@@ -61,11 +39,12 @@ agent/
 ├── main.py             # Agent entry point
 ├── graph.py            # LangGraph workflow definition
 ├── config.py           # Configuration, state, types
-├── requirements.txt
 └── nodes/
     ├── __init__.py
-    ├── supervisor.py   # Orchestrator node
-    └── final_answer.py # LLM response node
+    ├── mcp.py           # MCP interaction node
+    ├── planner.py       # Planner node
+    ├── plan_executor.py # Plan executor node
+    └── final_answer.py  # Final answer generation node
 ```
 
 ## API Endpoints
@@ -98,23 +77,21 @@ POST /api/query
 ## Setup
 
 ```bash
-cd agent
-pip install -r requirements.txt
+uv pip install -e ".[agent]"
 ```
 
 ## Environment Variables
 
 ```bash
 export OPENAI_API_KEY="your-key"
+export GOOGLE_API_KEY="your-key
 export MCP_SERVER_URL="http://localhost:8002/mcp"  # optional, this is default
 ```
 
 ## Running
 
 ```bash
-cd agent
-python api.py
-# or: uvicorn api:app --reload --port 8001
+python src/agent/api.py
 ```
 
 API available at http://localhost:8001
