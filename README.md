@@ -90,12 +90,19 @@ streamlit run src/webapp/app.py
 
 Alternatively, you can run the entire system using Docker Compose.
 
-1. Build and start the services:
+1. Create a `.env` file with the following content, and make sure it is in the same directory as `docker-compose.yml`:
+
+```
+OPENAI_API_KEY=your-openai-api-key
+GOOGLE_API_KEY=your-google-api-key
+```
+
+2. Build and start the services:
 
 ```bash
 docker-compose up --build
 ```
-2. Access the web app at http://localhost:8003
+3. Access the web app at http://localhost:8003
 
 ---
 
