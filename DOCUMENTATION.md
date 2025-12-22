@@ -9,7 +9,7 @@
 ## Agent design
 
 ### Overview
-the baseline agent had a big problem, it has a bigger context which gives a lot of token consumption
+the main problem in the baseline agent: it takes a bigger context which gives a lot of token consumption
 big context gives bad llm performance.
 
 ### Agent Architecture
