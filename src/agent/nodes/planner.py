@@ -4,6 +4,7 @@ from typing import Any
 from langchain_core.language_models import BaseChatModel
 
 from agent.config import AgentState, PlannerOutput
+from agent.llm_utils import safe_run_llm, update_llm_usage
 
 ALLOWED_TOPICS = [
     "Budget",
@@ -21,7 +22,7 @@ ALLOWED_TOPICS = [
     "Solution Fit",
 ]
 
-PLANNER_SYSTOM_PROMPT = f"""You are a planning engine.
+PLANNER_SYSTEM_PROMPT = f"""You are a planning engine.
 
 Your job is to convert a user question into one or more
 PARALLEL tool plans.
@@ -41,7 +42,7 @@ Rules:
 Available tools:
 1. filter_by_topics(topics: list[str]) the list contains only topics from the allowed topic list. the parameter topics must be a valid list of str
 2. filter_by_date(operator: Literal["=", "<", ">"], date: str) date must be in ISO format YYYY-MM-DD.
-3. take_last_n(n: int)b
+3. take_last_n(n: int) n must be a positive integer
 4. take_last_element()
 5. compute_len()
 
@@ -68,15 +69,25 @@ def create_planner_node(llm: BaseChatModel) -> Callable[[AgentState], dict[str, 
     """Create a planner node that generates tool plans based on the user question."""
 
     def planner_node(state: AgentState) -> dict[str, Any]:
+        if state["baseline"]:
+            # For baseline, return empty plans, meaning all data will be fetched without filtering
+            return {"plans": []}
         question = state["user_query"]
-
-        response = llm.with_structured_output(PlannerOutput).invoke(
+        response, llm_success, usage = safe_run_llm(
+            llm.with_structured_output(PlannerOutput),
             [
-                {"role": "system", "content": PLANNER_SYSTOM_PROMPT},
+                {"role": "system", "content": PLANNER_SYSTEM_PROMPT},
                 {"role": "user", "content": question},
-            ]
+            ],
         )
-
-        return {"plans": response.plans}
+        global_llm_usage = update_llm_usage(state, usage)
+        if not llm_success:
+            # If LLM failed, return an error response and end the agent workflow
+            return {
+                "final_response": "Error: Unable to generate plan at this time.",
+                "end": True,
+                "llm_usage": global_llm_usage,
+            }
+        return {"plans": response.plans, "llm_usage": global_llm_usage}
 
     return planner_node

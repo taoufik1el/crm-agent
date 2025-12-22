@@ -13,14 +13,10 @@ The final_answer node:
 - Uses GPT-4o-mini to generate the response based on the context
 """
 
-from typing import Literal
-
-from langchain_core.language_models import BaseChatModel
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_openai import ChatOpenAI
 from langgraph.graph import END, START, StateGraph
 
 from agent.config import AgentState
+from agent.llm_utils import get_llm
 from agent.nodes import (
     create_final_answer_node,
     create_mcp_node,
@@ -28,31 +24,12 @@ from agent.nodes import (
     create_planner_node,
 )
 
-
-def get_llm(
-    llm_provider: Literal["google", "openai"],
-    model_name: str,
-    reasoning_effort: Literal["none", "minimal", "low", "medium", "high"],
-) -> BaseChatModel:
-    """Get the LLM based on the configured provider."""
-    if llm_provider == "google":
-        return ChatGoogleGenerativeAI(model=model_name, temperature=0)
-    else:
-        return ChatOpenAI(
-            model=model_name,
-            temperature=0,
-            reasoning={"effort": reasoning_effort}
-            if reasoning_effort != "none"
-            else {},
-        )
-
-
 # Initialize LLM
 openai_llm = get_llm(
     llm_provider="openai", model_name="gpt-4o-mini", reasoning_effort="none"
 )
 openai_reasoning_llm = get_llm(
-    llm_provider="openai", model_name="gpt-5-mini", reasoning_effort="medium"
+    llm_provider="openai", model_name="gpt-5-mini", reasoning_effort="low"
 )
 
 
@@ -81,7 +58,11 @@ def create_agent_graph() -> StateGraph:
     workflow.add_conditional_edges(
         "mcp", lambda state: state.get("end"), path_map={True: END, False: "planner"}
     )
-    workflow.add_edge(start_key="planner", end_key="plan_executer")
+    workflow.add_conditional_edges(
+        "planner",
+        lambda state: state.get("end"),
+        path_map={True: END, False: "plan_executer"},
+    )
     workflow.add_edge(start_key="plan_executer", end_key="final_answer")
     workflow.add_edge(start_key="final_answer", end_key=END)
     # Compile the graph

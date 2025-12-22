@@ -9,20 +9,18 @@ from collections.abc import Callable
 from typing import Any
 
 from langchain_core.language_models import BaseChatModel
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.prompts import ChatPromptTemplate
 
 from agent.config import AgentState
+from agent.llm_utils import safe_run_llm, update_llm_usage
 
 # System prompt for the final answer LLM
 FINAL_ANSWER_SYSTEM_PROMPT = """You are a helpful assistant that answers questions about accounts based on their interaction history.
 
 You have access to the following context about the account:
 
-## Transcripts (Call recordings)
-{transcripts}
-
-## Emails
-{emails}
+{context}
 
 Based on this context, answer the user's question accurately and concisely.
 If the information needed to answer the question is not available in the context, say so clearly.
@@ -50,11 +48,24 @@ def create_final_answer_node(
         """
         user_query = state["user_query"]
         context = state["context"]
-        messages = [
-            SystemMessage(content=FINAL_ANSWER_SYSTEM_PROMPT),
-            HumanMessage(content=(f"Query: {user_query}\nContext:\n{context}")),
-        ]
-        response = llm.invoke(messages)
-        return {"final_response": response.content}
+        prompt = ChatPromptTemplate.from_messages(
+            [
+                ("system", FINAL_ANSWER_SYSTEM_PROMPT),
+                ("human", "User's question: {user_query}"),
+            ]
+        )
+        chain = prompt | llm | StrOutputParser()
+        response, llm_success, usage = safe_run_llm(
+            chain, llm_inputs={"context": context, "user_query": user_query}
+        )
+        global_llm_usage = update_llm_usage(state, usage)
+        if not llm_success:
+            # If LLM failed, return an error response and end the agent workflow
+            return {
+                "final_response": "Error: Unable to generate plan at this time.",
+                "end": True,
+                "llm_usage": global_llm_usage,
+            }
+        return {"final_response": response, "llm_usage": global_llm_usage}
 
     return final_answer_node

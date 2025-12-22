@@ -5,7 +5,7 @@ from langchain_core.prompts import PromptTemplate
 from pydantic import BaseModel
 from tqdm import tqdm
 
-from agent.graph import get_llm
+from agent.graph import get_llm  # type: ignore[attr-defined]
 from mcp_server.server import DATA_DIR
 
 

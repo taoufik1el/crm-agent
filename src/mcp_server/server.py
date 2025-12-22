@@ -18,6 +18,9 @@ import uvicorn
 from mcp.server.fastmcp import FastMCP
 from starlette.applications import Starlette
 
+port = int(os.getenv("MCP_SERVER_PORT", 8002))
+host = os.getenv("APP_HOST", "127.0.0.1")
+
 
 # Suppress noisy ClosedResourceError logs from MCP's stateless HTTP transport
 # These are expected in stateless mode and don't affect functionality
@@ -51,8 +54,8 @@ DATA_DIR = Path(os.getenv("DATA_DIR", Path(__file__).parent / "data")) / "accoun
 # Initialize MCP server
 mcp = FastMCP(
     SERVICE_NAME,
-    host="127.0.0.1",
-    port=8002,
+    host=host,
+    port=port,
     streamable_http_path="/mcp",
     json_response=True,
     stateless_http=True,
@@ -111,86 +114,10 @@ def list_all_accounts() -> list[dict[str, str | int]]:
 # ----- Tools -----
 
 
-@mcp.tool(
-    name="calls",
-    description="Retrieve all calls for an account. Returns raw transcript data as JSON.",
-)
-async def get_calls(account_id: int) -> dict[str, Any]:
-    """Get calls for an account."""
-    account_data = load_account_data(account_id)
-
-    if account_data is None:
-        return {
-            "found": False,
-            "calls": None,
-            "error": f"No data found for account_id: {account_id}",
-        }
-
-    calls = account_data.get("calls", [])
-
-    if not calls:
-        return {
-            "found": False,
-            "calls": None,
-            "error": "No calls found for this account",
-        }
-
-    return {
-        "found": True,
-        "account_name": account_data.get("account_name"),
-        "tenant_name": account_data.get("tenant_name"),
-        "account_id": account_id,
-        "calls": [
-            {
-                "date": call.get("date"),
-                "content": call.get("transcript"),
-                "topics": call.get("topics"),
-            }
-            for call in calls
-        ],
-        "emails": [],
-    }
-
-
-@mcp.tool(
-    name="emails",
-    description="Retrieve all emails for an account. Returns raw email data as JSON.",
-)
-async def get_emails(account_id: int) -> dict[str, Any]:
-    """Get emails for an account."""
-    account_data = load_account_data(account_id)
-
-    if account_data is None:
-        return {
-            "found": False,
-            "emails": None,
-            "error": f"No data found for account_id: {account_id}",
-        }
-
-    emails = account_data.get("emails", [])
-
-    if not emails:
-        return {
-            "found": False,
-            "emails": None,
-            "error": "No emails found for this account",
-        }
-
-    return {
-        "found": True,
-        "tenant_name": account_data.get("tenant_name"),
-        "account_name": account_data.get("account_name"),
-        "calls": [],
-        "emails": [
-            {
-                "date": email.get("date"),
-                "content": email.get("content"),
-                "topics": email.get("topics"),
-            }
-            for email in emails
-        ],
-        "account_id": account_id,
-    }
+@mcp.tool(name="fetch_accounts", description="Fetch the list of available accounts.")
+async def fetch_accounts() -> str:
+    """Fetch the list of available accounts."""
+    return json.dumps(list_all_accounts())
 
 
 @mcp.tool(
@@ -254,9 +181,8 @@ app = create_app()
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-    port = int(os.getenv("MCP_SERVER_PORT", 8002))
     logging.info(f"Starting MCP Server on port {port}")
     logging.info(f"Data directory: {DATA_DIR}")
     logging.info(f"MCP endpoint: http://localhost:{port}/mcp")
 
-    uvicorn.run(app, host="127.0.0.1", port=port)
+    uvicorn.run(app, host=host, port=port)

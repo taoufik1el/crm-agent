@@ -34,7 +34,7 @@ def filter_by_date(
 
 def take_last_n(calls: list[Call], emails: list[Email], n: int) -> list[Call | Email]:
     """Take the last n interactions."""
-    combined = calls[-n:] + emails[-n:]
+    combined = calls[-int(n) :] + emails[-int(n) :]
     return combined
 
 
@@ -121,6 +121,13 @@ def create_plan_executer_node() -> Callable[[AgentState], dict[str, Any]]:
         emails = state.get("emails", [])
         plans = state.get("plans", [])
         all_results = []
+
+        if not plans:
+            return {
+                "context": build_context(
+                    PlanSeries(steps=[], title="All Interactions"), calls + emails
+                )
+            }
 
         def run_plan(plan: PlanSeries) -> str:
             plan_series = plan.steps

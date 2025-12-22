@@ -90,14 +90,20 @@ class AgentState(MessagesState):
     user_query: str
     account_id: int
 
-    # calls or emails or both
+    # True if baseline
+    baseline: bool
+
+    # The full calls and emails
     calls: list[Call]
     emails: list[Email]
 
-    context: str
+    # Planning Agent's results for filtering calls and emails to get relevant context
     plans: list[PlanSeries]
 
-    # Process control
+    # Retrieved context
+    context: str
+
+    # Variable to indicate end of execution when no data found in MCP
     end: bool
 
     # Output
@@ -105,3 +111,6 @@ class AgentState(MessagesState):
 
     # Tracking
     messages: Annotated[list[BaseMessage], add_messages]
+
+    # LLM usage tracking
+    llm_usage: dict[str, int]

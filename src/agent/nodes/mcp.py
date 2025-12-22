@@ -9,6 +9,7 @@ This node is the first entrypoint of the agent. It:
 
 import asyncio
 import json
+import logging
 from collections.abc import Callable, Coroutine
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any
@@ -20,6 +21,8 @@ from agent.config import MCP_SERVER_URL, AgentState, Call, Email
 
 # Thread pool for running async code from sync context
 _executor = ThreadPoolExecutor(max_workers=4)
+
+logging.basicConfig(level=logging.INFO)
 
 
 def _run_async(coro: Coroutine[Any, Any, str]) -> str:
