@@ -1,0 +1,35 @@
+services:
+  agent:
+    build:
+      context: .
+      dockerfile: docker/agent.Dockerfile
+    ports:
+      - "8001:8001"
+    depends_on:
+      - mcp_server
+    environment:
+      MCP_SERVER_URL: http://mcp_server:8002/mcp
+    env_file:
+      - .env
+
+  mcp_server:
+    build:
+      context: .
+      dockerfile: docker/mcp_server.Dockerfile
+    ports:
+      - "8002:8002"
+    environment:
+      MCP_SERVER_PORT: 8002
+    volumes:
+      - ./src/mcp_server/data:/app/src/mcp_server/data:ro
+
+  webapp:
+    build:
+      context: .
+      dockerfile: docker/webapp.Dockerfile
+    ports:
+      - "8003:8003"
+    depends_on:
+      - agent
+    environment:
+      API_URL: http://agent:8001
