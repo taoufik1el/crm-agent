@@ -31,6 +31,7 @@ It aggregates results from multiple tool calls and **builds context** for final 
 Finally, the **final answer node** is an LLM-powered node that generates the final answer based on the user query and aggregated context from plan_executor.
 No reasoning is needed here because the context is supposed to be small and relevant.
 
+A change in the graph I would do is to modify the conditional edge after the planner node to go directly to the final answer node if the plan is empty taking the full context.
 
 ### Token usage tracking
 
@@ -73,11 +74,14 @@ If I had more time, I would focus on the following areas to further enhance the 
 4. **Chatbot** Improve the webapp to support a chat interface instead of single query-response interactions. Plus implement llm history caching to reduce token consumption for follow-up questions.
 5. **Steaming**: Enhance the streaming capabilities of the agent to provide real-time responses to user queries.
 6. **Scripts** folder is not well clean due to lack of time. I would clean it and document it better.
-7. **Agent optimizations**: Take time to improve the agent prompts and tools, test more cases to covers potential errors, and investigate why it is slower than the baseline.
+7. **Agent optimizations**: Take time to improve the agent prompts and tools, test more cases to covers potential errors, and investigate why it is slower than the baseline. Implement LLM callback, when the principal LLM fails, we can retry with another model.
 
 # How would you make it production-ready?
 To make the implementation production-ready we should do the following:
 - Have a strong CD/CI pipeline to automate testing, building, and deployment processes.
+- Implement proper logging.
 - Push the docker images to a container registry or Docker Hub.
 - Host the MCP data outside the container, using Postgres data like Supabase or any other database. So we can support big volume of data.
-- Implement LLM monitoring tools (Like Langfuse), and general monitoring like graphana.
+- Implement LLM monitoring tools (Like Langfuse), and general monitoring like graphana for tracking system health and general performance.
+- Replace streamlit webapp with a more robust frontend framework like React or Vue.js for better user experience and scalability.
+- Handling security issues, like securing API keys, and access control.
