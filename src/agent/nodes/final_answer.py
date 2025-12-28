@@ -57,11 +57,6 @@ def create_final_answer_node(
         if streaming:
             chain = llm | StrOutputParser()
             tokens = []
-            # for chunk in llm.stream(
-            #         prompt.format_prompt(context=context, user_query=user_query).to_messages()
-            # ):
-            #     for token in chunk.content:
-            #         tokens.append(token.get("text", ""))
             llm_success = True
             for token in safe_stream_llm(
                 chain,
