@@ -16,7 +16,10 @@ class TopicsList(BaseModel):
 
 
 llm = get_llm(
-    llm_provider="openai", model_name="gpt-4o-mini", reasoning_effort="none"
+    llm_provider="openai",
+    model_name="gpt-4o-mini",
+    reasoning_effort="none",
+    streaming=False,
 ).with_structured_output(TopicsList)
 
 with open("src/mcp_server/data/topics.json") as f:

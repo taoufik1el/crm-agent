@@ -42,14 +42,14 @@ def run_agent_on_all_accounts(baseline_mode: bool, output_path: str) -> None:
         question = question_map[account_id - 1]
         start = time.time()
         try:
-            result, llm_usage = run_agent(
+            result, llm_usage = run_agent(  # type: ignore[misc]
                 question, account_id=account_id, baseline=baseline_mode
             )
             end = time.time()
             results[account_id] = {
                 "question": question,
-                "response": result,
-                "llm_usage": llm_usage,
+                "response": result,  # type: ignore[has-type]
+                "llm_usage": llm_usage,  # type: ignore[has-type]
                 "time_taken": end - start,
             }
         except Exception as e:

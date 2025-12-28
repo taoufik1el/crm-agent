@@ -13,7 +13,7 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 
 from agent.config import AgentState
-from agent.llm_utils import safe_run_llm, update_llm_usage
+from agent.llm_utils import safe_run_llm, safe_stream_llm
 
 # System prompt for the final answer LLM
 FINAL_ANSWER_SYSTEM_PROMPT = """You are a helpful assistant that answers questions about accounts based on their interaction history.
@@ -28,7 +28,7 @@ If the information needed to answer the question is not available in the context
 
 
 def create_final_answer_node(
-    llm: BaseChatModel,
+    llm: BaseChatModel, streaming: bool
 ) -> Callable[[AgentState], dict[str, Any]]:
     """Create the final answer node function."""
 
@@ -54,18 +54,37 @@ def create_final_answer_node(
                 ("human", "User's question: {user_query}"),
             ]
         )
-        chain = prompt | llm | StrOutputParser()
-        response, llm_success, usage = safe_run_llm(
-            chain, llm_inputs={"context": context, "user_query": user_query}
-        )
-        global_llm_usage = update_llm_usage(state, usage)
+        if streaming:
+            chain = llm | StrOutputParser()
+            tokens = []
+            # for chunk in llm.stream(
+            #         prompt.format_prompt(context=context, user_query=user_query).to_messages()
+            # ):
+            #     for token in chunk.content:
+            #         tokens.append(token.get("text", ""))
+            llm_success = True
+            for token in safe_stream_llm(
+                chain,
+                prompt.format_prompt(
+                    context=context, user_query=user_query
+                ).to_messages(),
+            ):
+                if token is None:
+                    llm_success = False
+                    break
+                tokens.append(token.get("text", ""))
+            response = "".join(tokens)
+        else:
+            chain = prompt | llm | StrOutputParser()
+            response, llm_success = safe_run_llm(
+                chain, llm_inputs={"context": context, "user_query": user_query}
+            )
         if not llm_success:
             # If LLM failed, return an error response and end the agent workflow
             return {
                 "final_response": "Error: Unable to generate plan at this time.",
                 "end": True,
-                "llm_usage": global_llm_usage,
             }
-        return {"final_response": response, "llm_usage": global_llm_usage}
+        return {"final_response": response}
 
     return final_answer_node

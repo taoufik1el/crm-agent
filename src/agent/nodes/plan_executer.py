@@ -32,12 +32,6 @@ def filter_by_date(
     return calls + emails
 
 
-def take_last_n(calls: list[Call], emails: list[Email], n: int) -> list[Call | Email]:
-    """Take the last n interactions."""
-    combined = calls[-int(n) :] + emails[-int(n) :]
-    return combined
-
-
 def take_last_element(calls: list[Call], emails: list[Email]) -> list[Call | Email]:
     """Take the last interaction."""
     result = []
@@ -48,17 +42,23 @@ def take_last_element(calls: list[Call], emails: list[Email]) -> list[Call | Ema
     return result
 
 
-def compute_len(calls: list[Call], emails: list[Email]) -> int:
-    """Compute the length of interactions."""
-    return len(calls) + len(emails)
+def filter_by_keywords(
+    calls: list[Call], emails: list[Email], keywords: list[str]
+) -> list[Call | Email]:
+    """Filter interactions by keywords."""
+    keywords_set = set(keywords)
+    return [
+        item
+        for item in (calls + emails)
+        if any(keyword.lower() in item.content.lower() for keyword in keywords_set)
+    ]
 
 
 TOOL_REGISTRY: dict[str, Callable[..., list[Call | Email] | int]] = {
     "filter_by_topics": filter_by_topics,
     "filter_by_date": filter_by_date,
-    "take_last_n": take_last_n,
     "take_last_element": take_last_element,
-    "compute_len": compute_len,
+    "filter_by_keywords": filter_by_keywords,
 }
 
 

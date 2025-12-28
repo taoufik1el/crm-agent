@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from agent.main import run_agent
+from agent.main import run_agent, stream_agent
 from agent.nodes.mcp import mcp_client
 
 host = os.getenv("APP_HOST", "127.0.0.1")
@@ -65,7 +65,7 @@ async def query_agent(request: QueryRequest) -> QueryResponse:
     Returns the agent's response (non-streaming).
     """
     try:
-        response, _ = run_agent(
+        response = run_agent(
             user_query=request.user_query, account_id=request.account_id
         )
 
@@ -84,16 +84,9 @@ async def query_agent_stream(request: QueryRequest) -> StreamingResponse:
 
     async def generate() -> AsyncGenerator[str, Any]:
         try:
-            # Run the agent to get the full response
-            response, _ = run_agent(
+            async for chunk in stream_agent(
                 user_query=request.user_query, account_id=request.account_id
-            )
-
-            # Stream the response in chunks
-            # In production, integrate with LLM's native streaming
-            chunk_size = 10
-            for i in range(0, len(response), chunk_size):
-                chunk = response[i : i + chunk_size]
+            ):
                 yield f"data: {chunk}\n\n"
 
             yield "data: [DONE]\n\n"
@@ -110,3 +103,12 @@ async def query_agent_stream(request: QueryRequest) -> StreamingResponse:
 
 if __name__ == "__main__":
     uvicorn.run(app, host=host, port=port)
+    uvicorn.run(
+        app,  # full module path
+        host=host,
+        port=port,
+        log_level="info",
+        reload=True,  # optional, dev mode
+        loop="asyncio",
+        http="h11",  # prevents HTTP/2 buffering issues
+    )

@@ -16,7 +16,10 @@ class Evaluation(BaseModel):
 
 
 llm = get_llm(
-    llm_provider="google", model_name="gemini-2.5-flash", reasoning_effort="none"
+    llm_provider="google",
+    model_name="gemini-2.5-flash",
+    reasoning_effort="none",
+    streaming=False,
 ).with_structured_output(Evaluation)
 
 

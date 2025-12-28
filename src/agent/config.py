@@ -111,6 +111,3 @@ class AgentState(MessagesState):
 
     # Tracking
     messages: Annotated[list[BaseMessage], add_messages]
-
-    # LLM usage tracking
-    llm_usage: dict[str, int]

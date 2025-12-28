@@ -3,10 +3,12 @@
 Web interface that connects to the Agent API backend.
 """
 
+import asyncio
 import os
-from collections.abc import Generator
+from collections.abc import AsyncGenerator
 from typing import Any
 
+import httpx
 import requests  # type: ignore[import]
 import streamlit as st
 
@@ -144,26 +146,34 @@ def query_agent(account_id: int, user_query: str) -> Any:
     return response.json()["response"]
 
 
-def query_agent_stream(account_id: int, user_query: str) -> Generator[Any, Any, Any]:
-    """Query the agent via API with streaming."""
-    response = requests.post(
-        f"{API_URL}/api/query/stream",
-        json={"account_id": account_id, "user_query": user_query},
-        stream=True,
-        timeout=60,
-    )
-    response.raise_for_status()
+async def query_agent_stream(account_id: int, user_query: str) -> AsyncGenerator[str]:  # type: ignore[type-arg]
+    """Stream responses from the agent for a given user query.
 
-    for line in response.iter_lines():
-        if line:
-            decoded = line.decode("utf-8")
-            if decoded.startswith("data: "):
-                data = decoded[6:]
-                if data == "[DONE]":
-                    break
-                if data.startswith("[ERROR]"):
-                    raise Exception(data[8:])
-                yield data
+    Args:
+        account_id (int): The ID of the user's account.
+        user_query (str): The query string to send to the agent.
+
+    Yields:
+        str: Each line of streamed response from the agent.
+
+    Raises:
+        Exception: If the agent returns an error message in the stream.
+    """
+    timeout = httpx.Timeout(60.0, connect=10.0)
+    async with httpx.AsyncClient(timeout=timeout) as client:
+        async with client.stream(
+            "POST",
+            f"{API_URL}/api/query/stream",
+            json={"account_id": account_id, "user_query": user_query},
+        ) as response:
+            async for line in response.aiter_text():
+                if line.startswith("data: "):
+                    data = line[6:-2]
+                    if data == "[DONE]":
+                        return
+                    if data.startswith("[ERROR]"):
+                        raise Exception(data[8:])
+                    yield data
 
 
 def main() -> None:
@@ -223,17 +233,20 @@ def main() -> None:
         st.subheader("💬 Agent Response")
 
         if use_streaming:
-            # Streaming response
-            response_placeholder = st.empty()
-            full_response = ""
-
             try:
-                for chunk in query_agent_stream(account_id, user_query):
-                    full_response += chunk
-                    response_placeholder.markdown(
-                        f'<div class="response-box">{full_response}</div>',
-                        unsafe_allow_html=True,
-                    )
+                placeholder = st.empty()  # container to update live
+                full_text = ""
+
+                async def _stream() -> None:
+                    async for chunk in query_agent_stream(account_id, user_query):
+                        nonlocal full_text
+                        full_text += chunk
+                        placeholder.markdown(
+                            f'<div class="response-box">{full_text}</div>',
+                            unsafe_allow_html=True,
+                        )
+
+                asyncio.run(_stream())
             except Exception as e:
                 st.error(f"Error: {str(e)}")
         else:

@@ -26,15 +26,31 @@ from agent.nodes import (
 
 # Initialize LLM
 openai_llm = get_llm(
-    llm_provider="openai", model_name="gpt-4o-mini", reasoning_effort="none"
+    llm_provider="openai",
+    model_name="gpt-4o-mini",
+    reasoning_effort="none",
+    streaming=False,
 )
 openai_reasoning_llm = get_llm(
-    llm_provider="openai", model_name="gpt-5-mini", reasoning_effort="low"
+    llm_provider="openai",
+    model_name="gpt-5-mini",
+    reasoning_effort="low",
+    streaming=False,
+)
+
+openai_llm_stream = get_llm(
+    llm_provider="openai",
+    model_name="gpt-4o-mini",
+    reasoning_effort="none",
+    streaming=True,
 )
 
 
-def create_agent_graph() -> StateGraph:
+def create_agent_graph(streaming: bool) -> StateGraph:
     """Create and compile the agent graph.
+
+    Args:
+        streaming: Whether to use streaming LLMs
 
     The graph structure is:
         __start__ → supervisor → final_answer → __end__
@@ -50,7 +66,12 @@ def create_agent_graph() -> StateGraph:
     workflow.add_node(node="mcp", action=create_mcp_node())
     workflow.add_node(node="planner", action=create_planner_node(openai_reasoning_llm))
     workflow.add_node(node="plan_executer", action=create_plan_executer_node())
-    workflow.add_node(node="final_answer", action=create_final_answer_node(openai_llm))
+    workflow.add_node(
+        node="final_answer",
+        action=create_final_answer_node(
+            openai_llm if not streaming else openai_llm_stream, streaming
+        ),
+    )
 
     # # Define the edges
     # workflow.add_edge(start_key=START, end_key="question_router")
@@ -69,7 +90,3 @@ def create_agent_graph() -> StateGraph:
     graph = workflow.compile()
 
     return graph
-
-
-# Create the agent instance
-agent = create_agent_graph()
