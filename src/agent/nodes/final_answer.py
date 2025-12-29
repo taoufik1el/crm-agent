@@ -67,7 +67,7 @@ def create_final_answer_node(
                 if token is None:
                     llm_success = False
                     break
-                tokens.append(token.get("text", ""))
+                tokens.append(token)
             response = "".join(tokens)
         else:
             chain = prompt | llm | StrOutputParser()

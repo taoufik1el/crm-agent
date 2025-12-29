@@ -7,7 +7,6 @@ from typing import Annotated, Literal
 from langchain_core.messages import BaseMessage
 from langgraph.graph import MessagesState, add_messages
 from pydantic import BaseModel
-from typing_extensions import TypedDict
 
 # LLM settings
 # TODO: Build LLM settings config in another file
@@ -29,11 +28,13 @@ class Response(BaseModel):
     response: str
 
 
-class Step(TypedDict):
-    """A single step in the plan."""
-
-    tool: str  # Name of the tool to use: either transcripts or emails
-    description: str  # Description of what this step does
+ToolName = Literal[
+    "filter_by_topics",
+    "filter_by_keywords",
+    "filter_by_date",
+    "take_last_element",
+    "compute_len",
+]
 
 
 class Call(BaseModel):
@@ -52,15 +53,6 @@ class Email(BaseModel):
     content: str
     topics: list[str]
     interaction_type: str = "email"
-
-
-ToolName = Literal[
-    "filter_by_topics",
-    "filter_by_date",
-    "take_last_n",
-    "take_last_element",
-    "compute_len",
-]
 
 
 class ToolCall(BaseModel):

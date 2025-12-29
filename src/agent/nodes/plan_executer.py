@@ -22,13 +22,13 @@ def filter_by_date(
         raise ValueError(f"Invalid operator: {operator}")
 
     if operator == "=":
-        return [i for i in (calls + emails) if i["date"] == date]
+        return [i for i in (calls + emails) if i.date == date]
 
     if operator == "<":
-        return [i for i in (calls + emails) if i["date"] < date]
+        return [i for i in (calls + emails) if i.date < date]
 
     if operator == ">":
-        return [i for i in (calls + emails) if i["date"] > date]
+        return [i for i in (calls + emails) if i.date > date]
     return calls + emails
 
 

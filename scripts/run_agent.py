@@ -4,8 +4,10 @@ import re
 import time
 from pathlib import Path
 
+from langchain_core.callbacks import get_usage_metadata_callback
 from tqdm import tqdm
 
+from agent.graph import create_agent_graph
 from agent.main import run_agent
 from mcp_server.server import DATA_DIR
 
@@ -26,6 +28,7 @@ question_map = [
 def run_agent_on_all_accounts(baseline_mode: bool, output_path: str) -> None:
     """Run the agent on all account data files in the DATA_DIR."""
     output_json_path = Path(output_path)
+    agent = create_agent_graph(streaming=False)
     if output_json_path.exists():
         with output_json_path.open("r") as f:
             results = json.load(f)
@@ -42,14 +45,16 @@ def run_agent_on_all_accounts(baseline_mode: bool, output_path: str) -> None:
         question = question_map[account_id - 1]
         start = time.time()
         try:
-            result, llm_usage = run_agent(  # type: ignore[misc]
-                question, account_id=account_id, baseline=baseline_mode
-            )
-            end = time.time()
+            with get_usage_metadata_callback() as usage_cb:
+                result = run_agent(
+                    agent, question, account_id=account_id, baseline=baseline_mode
+                )
+                end = time.time()
+                llm_usage = usage_cb.usage_metadata
             results[account_id] = {
                 "question": question,
-                "response": result,  # type: ignore[has-type]
-                "llm_usage": llm_usage,  # type: ignore[has-type]
+                "response": result,
+                "llm_usage": llm_usage,
                 "time_taken": end - start,
             }
         except Exception as e:

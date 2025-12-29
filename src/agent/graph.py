@@ -3,14 +3,7 @@
 
 This module defines the LangGraph workflow for the agent.
 The graph follows the structure:
-    __start__ → supervisor → final_answer → __end__
-
-The supervisor node:
-- Uses a pre-determined plan (fetch all transcripts and emails)
-- Calls MCP tools directly to retrieve context
-
-The final_answer node:
-- Uses GPT-4o-mini to generate the response based on the context
+__start__ → mcp → planner → plan_executer → final_answer → __end__
 """
 
 from langgraph.graph import END, START, StateGraph
@@ -22,27 +15,6 @@ from agent.nodes import (
     create_mcp_node,
     create_plan_executer_node,
     create_planner_node,
-)
-
-# Initialize LLM
-openai_llm = get_llm(
-    llm_provider="openai",
-    model_name="gpt-4o-mini",
-    reasoning_effort="none",
-    streaming=False,
-)
-openai_reasoning_llm = get_llm(
-    llm_provider="openai",
-    model_name="gpt-5-mini",
-    reasoning_effort="low",
-    streaming=False,
-)
-
-openai_llm_stream = get_llm(
-    llm_provider="openai",
-    model_name="gpt-4o-mini",
-    reasoning_effort="none",
-    streaming=True,
 )
 
 
@@ -58,6 +30,27 @@ def create_agent_graph(streaming: bool) -> StateGraph:
     Returns:
         The compiled agent graph
     """
+    # Initialize LLM
+    openai_llm = get_llm(
+        llm_provider="openai",
+        model_name="gpt-4o-mini",
+        reasoning_effort="none",
+        streaming=False,
+    )
+    openai_reasoning_llm = get_llm(
+        llm_provider="openai",
+        model_name="gpt-5-mini",
+        reasoning_effort="low",
+        streaming=False,
+    )
+
+    openai_llm_stream = get_llm(
+        llm_provider="openai",
+        model_name="gpt-4o-mini",
+        reasoning_effort="none",
+        streaming=True,
+    )
+
     # Initialize the graph with our state
     workflow = StateGraph(AgentState)
 

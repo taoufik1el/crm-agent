@@ -7,6 +7,7 @@ Supports both streaming and non-streaming responses.
 import json
 import os
 from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 from typing import Any
 
 import uvicorn
@@ -15,12 +16,23 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
+from agent.graph import create_agent_graph
 from agent.main import run_agent, stream_agent
 from agent.nodes.mcp import mcp_client
 
 host = os.getenv("APP_HOST", "127.0.0.1")
 port = int(os.getenv("APP_PORT", 8001))
-app = FastAPI(title="Account Intelligence API", version="1.0.0")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None]:  # type: ignore[type-arg]
+    """Lifespan context manager to initialize agent graphs."""
+    app.state.agent = create_agent_graph(streaming=False)
+    app.state.streaming_agent = create_agent_graph(streaming=True)
+    yield
+
+
+app = FastAPI(title="Account Intelligence API", version="1.0.0", lifespan=lifespan)
 
 # CORS middleware
 app.add_middleware(
@@ -65,8 +77,9 @@ async def query_agent(request: QueryRequest) -> QueryResponse:
     Returns the agent's response (non-streaming).
     """
     try:
+        agent = app.state.agent
         response = run_agent(
-            user_query=request.user_query, account_id=request.account_id
+            agent=agent, user_query=request.user_query, account_id=request.account_id
         )
 
         return QueryResponse(response=response)
@@ -81,11 +94,14 @@ async def query_agent_stream(request: QueryRequest) -> StreamingResponse:
 
     Returns a Server-Sent Events stream.
     """
+    agent = app.state.streaming_agent
 
     async def generate() -> AsyncGenerator[str, Any]:
         try:
             async for chunk in stream_agent(
-                user_query=request.user_query, account_id=request.account_id
+                agent=agent,
+                user_query=request.user_query,
+                account_id=request.account_id,
             ):
                 yield f"data: {chunk}\n\n"
 

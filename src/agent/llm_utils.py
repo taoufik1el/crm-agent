@@ -58,8 +58,10 @@ def safe_stream_llm(  # type: ignore[return]
         - usage: dict of LLM usage metadata (final after streaming ends)
     """
     try:
-        for chunk in llm.stream(llm_inputs):
-            yield from chunk.content
+        with get_usage_metadata_callback() as usage_cb:
+            for chunk in llm.stream(llm_inputs):
+                yield from chunk
+            logging.info(f"LLM usage: {usage_cb.usage_metadata}")
     except (RuntimeError, ValueError):
         # Yield error message once
         yield None

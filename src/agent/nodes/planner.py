@@ -29,10 +29,11 @@ Your job is to convert a user question into one or more
 PARALLEL tool plans.
 
 Available tools:
-1. filter_by_topics(topics: list[str]) the list contains only topics from the allowed topic list. the parameter topics must be a valid list of str
-2. filter_by_date(operator: Literal["=", "<", ">"], date: str) date must be in ISO format YYYY-MM-DD.
-3. take_last_element()
-4. filter_by_keywords(keywords: list[str]) the parameter keywords must be a valid list of str
+- tool 1: 'filter_by_topics'. params: ('topics': list[str]). The list contains only topics from the allowed topic list. the parameter topics must be a valid list of str
+- tool 2: 'filter_by_date'. params: ('operator': Literal["=", "<", ">"], 'date': str). date parameter must be in ISO format YYYY-MM-DD.
+- tool 3: 'take_last_element'. params: ()
+- tool 4. 'filter_by_keywords'. params: ('keywords': list[str]). the parameter keywords must be a valid list of str
+- tool 5: 'compute_len'. params: (). If this tool is used, it must be the last step in the plan.
 
 Rules:
 - You ONLY output structured JSON following the provided schema.
@@ -48,6 +49,7 @@ Rules:
 
 Allowed topics:
 [{", ".join(ALLOWED_TOPICS)}]
+
 Interpretation rules:
 - "latest", "most recent", "last" → take_last_element
 - "how many" → compute_len
