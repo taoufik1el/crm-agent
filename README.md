@@ -1,7 +1,3 @@
-# ML Engineer Technical Test
-
-
-
 ## 📐 Architecture Overview
 
 The system consists of three services:
